@@ -231,7 +231,7 @@ document.getElementById("lockbtn").addEventListener("click",()=>{
                    :"LOCK REJECTED — wrong conviction.";
   v.style.color=win?"var(--true)":"var(--false)";
   ch.textContent=chainFor(CS,accused);
-  ch.style.display="block";if(!win)ch.classList.add("bad");
+  ch.style.display="block";ch.classList.toggle("bad",!win);
   document.getElementById("lockbtn").style.display="none";
   document.getElementById("again").style.display="";
   gradeStamps();
