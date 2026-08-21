@@ -217,7 +217,7 @@ function newCase(){
 document.addEventListener("click",e=>{
   const cl=e.target.closest(".claim");if(!cl||locked)return;
   const st=document.getElementById("st-"+cl.dataset.id);
-  const cur=st.dataset.s,next=cur==="none"?"TRUE":cur==="TRUE"?"FALSE":"UNPROVEN";
+  const cur=st.dataset.s,next=cur==="none"?"TRUE":cur==="TRUE"?"FALSE":cur==="FALSE"?"UNPROVEN":"TRUE";
   st.dataset.s=next;st.className="stamp st-"+next;
   st.textContent=next==="none"?"\u00b7":next;
 });
