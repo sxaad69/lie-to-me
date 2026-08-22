@@ -144,6 +144,16 @@ function shuffle(rnd,arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(rnd
 
 const NAMES=["Marlowe","Vega","Ash"];
 const ROLES={Marlowe:"night porter",Vega:"barmaid",Ash:"maintenance"};
+/* boot-time asset assert: every portraitKey(n,st) lookup MUST resolve to an embedded
+   data: URI — fail loudly here instead of silently rendering a broken url() against
+   an undefined registry key (D1, found by t_5f0f9c94 rule-16 playthrough) */
+(function(){
+  for(const n of NAMES)for(const st of ["composed","fraying","broken"]){
+    const k=n.toLowerCase()+"-"+st,v=ASSETS.portraits[k];
+    if(typeof v!=="string"||!v.startsWith("data:"))
+      throw new Error("portraitKey assert FAILED: portraits["+JSON.stringify(k)+"] is missing or not a data: URI");
+  }
+})();
 const fmt=m=>"22:"+String(m).padStart(2,"0");
 
 /* ================================================================
@@ -591,7 +601,7 @@ function newCase(){
   updateLockState();
   printProofs(CS);   /* spec: proofs printed per seed or the case doesn't ship */
 }
-function portraitKey(n,st){return ASSETS.portraits[n+"-"+st]}
+function portraitKey(n,st){return ASSETS.portraits[n.toLowerCase()+"-"+st]}
 function suspectLevel(n){return CS[n+"_lvl"]||0}
 
 function renderSuspects(){
