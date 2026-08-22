@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LIE TO ME — The Breaking Point</title>
+<style>
+  :root{--bg:#0b0c10;--panel:#14161d;--panel2:#191c25;--ink:#e8e6df;--dim:#93909a;
+        --acc:#e2b93b;--true:#4fae62;--false:#d05555;--unp:#7f8ea3;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:16px/1.45 Georgia,'Times New Roman',serif}
+  .wrap{max-width:1100px;margin:0 auto;padding:16px}
+  h1{font-size:21px;letter-spacing:.14em;margin:0;color:var(--acc)}
+  h1 small{color:var(--dim);font-size:12px;letter-spacing:.06em;display:block;margin-top:2px}
+  h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);
+     border-bottom:1px solid #262a35;padding-bottom:4px;margin:20px 0 10px}
+  .brief{color:var(--dim);font-style:italic;margin:10px 0 0;font-size:15px}
+
+  /* ---------- interrogation desk ---------- */
+  #desk{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+  .suspect{background:var(--panel);border:1px solid #232735;border-radius:6px;
+           padding:10px;width:250px;flex:0 0 auto;transition:box-shadow .3s,border-color .3s}
+  .portrait{width:180px;height:225px;margin:0 auto 8px;border-radius:4px;
+            background:#000 center/cover no-repeat;position:relative;
+            box-shadow:0 6px 18px rgba(0,0,0,.55)}
+  .sname{font-weight:bold;letter-spacing:.05em;font-size:17px}
+  .srole{color:var(--dim);font-size:13px;margin-bottom:6px}
+  .suspect.fraying{border-color:#6e3f3f;box-shadow:inset 0 0 22px rgba(160,60,60,.15)}
+  .suspect.broken{border-color:#8a3030;box-shadow:inset 0 0 30px rgba(190,50,50,.28)}
+
+  .claim{display:block;background:var(--panel2);border-left:3px solid #343a4c;
+         border-radius:4px;padding:7px 9px;margin:7px 0 0;cursor:pointer;user-select:none;
+         font-size:14.5px;line-height:1.38;position:relative;overflow:hidden}
+  .claim:hover{border-left-color:var(--acc)}
+  .claim .stamp{float:right;font:bold 11px/1 Verdana,sans-serif;letter-spacing:.08em;
+                padding:3px 7px;border-radius:3px;border:1px solid currentColor;
+                margin-left:8px;transform:rotate(-6deg);opacity:.95}
+  .st-TRUE{color:var(--true)} .st-FALSE{color:var(--false)} .st-UNPROVEN{color:var(--unp)}
+  .st-none{visibility:hidden}
+  @keyframes punch{0%{transform:scale(2.1) rotate(-14deg);opacity:.4}
+                   60%{transform:scale(.92) rotate(-5deg);opacity:1}
+                   100%{transform:scale(1) rotate(-6deg)}}
+  .claim .stamp.punch{animation:punch .22s ease-out}
+  .claim.ggraded-yes{outline:1px solid var(--true)}
+  .claim.ggraded-no{outline:1px solid var(--false)}
+
+  /* ---------- records (desk dressing) ---------- */
+  .rec{border-radius:4px;padding:11px 13px;margin-bottom:9px;min-height:64px;position:relative;
+       background-color:#d9d2bd;background-size:cover;background-position:center;
+       color:#26221a;box-shadow:0 4px 12px rgba(0,0,0,.5);
+       border:1px solid #b7ae93;font-size:14.5px;line-height:1.4}
+  .rec.logstrip{background-color:#101216;color:#cfcabb;border-color:#2a2e38}
+  .rec b{font-size:14px;letter-spacing:.03em}
+  .rec.polaroid::before{content:"";position:absolute;right:-6px;top:-8px;width:74px;height:74px;
+       background:var(--dress-polaroid) center/contain no-repeat;pointer-events:none}
+  .rec .tag{float:right;font:bold 11px Verdana,sans-serif;letter-spacing:.08em;opacity:.75;margin-left:8px}
+  .rec.reveal{animation:thudin .3s ease-out}
+  @keyframes thudin{0%{transform:translateY(26px) rotate(3deg);opacity:0}
+                    70%{transform:translateY(-3px) rotate(-1deg)}
+                    100%{transform:none;opacity:1}}
+
+  /* ---------- accusation / verdict ---------- */
+  #lockrow{text-align:center;margin:16px 0 6px}
+  button{font:inherit;cursor:pointer;border-radius:5px;border:1px solid #3a4157;
+         background:var(--panel2);color:var(--ink);padding:8px 16px}
+  button:hover:not(:disabled){border-color:var(--acc)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  #lockbtn{background:var(--acc);color:#191608;border-color:var(--acc);
+           font-weight:bold;letter-spacing:.06em}
+  .pickrow label{margin:0 12px 0 4px;cursor:pointer}
+  #verdict{min-height:22px;text-align:center;font-style:italic}
+  #chain{background:#171310;border:1px solid var(--acc);border-radius:6px;
+         padding:12px 15px;margin-top:10px;white-space:pre-wrap;display:none;
+         min-height:120px;font-family:inherit;font-size:15px}
+  #chain.bad{background:#1c1214;border-color:var(--false)}
+  footer{color:#565b66;font-size:12px;text-align:center;margin-top:24px}
+
+  /* ---------- the breaking point ---------- */
+  body.hitstop, body.hitstop *{animation-play-state:paused !important}
+  @keyframes lampdip{0%,100%{filter:none}12%{filter:brightness(.45) contrast(1.2)}
+                     22%{filter:brightness(.85)}30%{filter:brightness(.4)}
+                     46%{filter:brightness(1.02)}58%{filter:brightness(.62)}
+                     72%{filter:brightness(.98)}84%{filter:brightness(.8)}}
+  body.lamp{animation:lampdip 1.05s linear}
+  @keyframes crackshake{0%,100%{transform:none}20%{transform:translate(-4px,2px) rotate(-1deg)}
+                        40%{transform:translate(3px,-2px) rotate(1deg)}
+                        60%{transform:translate(-3px,1px)}80%{transform:translate(2px,-1px)}}
+  .suspect.shatter{animation:crackshake .45s linear}
+  .suspect.shatter .portrait{filter:brightness(1.25) saturate(1.3)}
+  #casebar{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+  #caselbl{color:var(--acc);letter-spacing:.1em;font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="casebar">
+    <h1>LIE TO ME <small>The Breaking Point &middot; noir feeler &middot; seed <span id="seedlbl"></span> &middot; <span id="audiolbl" style="color:#6a675f">audio arms on first click</span></small></h1>
+    <span id="caselbl"></span>
+  </div>
+
+  <p class="brief" id="brief"></p>
+
+  <h2>Suspects &amp; testimony — stamp every claim before you can lock</h2>
+  <div id="desk"></div>
+
+  <h2>Evidence records</h2>
+  <p style="color:var(--dim);font-size:13.5px;margin:0 0 8px">
+     Click a claim to stamp it &mdash; cycles TRUE &rarr; FALSE &rarr; UNPROVEN.
+     The LOCK stays cold until every claim carries a stamp.</p>
+  <div id="records"></div>
+
+  <h2>Accusation</h2>
+  <div id="lockrow">
+    <span id="pickrow" class="pickrow"></span><br><br>
+    <button id="lockbtn">LOCK THE ACCUSATION</button>
+    <button id="nextcase" style="display:none">NEXT CASE</button>
+  </div>
+  <p id="verdict"></p>
+  <pre id="chain"></pre>
+
+  <footer>throwaway feeler v2 &middot; generator = prover: machine proofs of unique-culprit +
+          no-innocent-convicts print to the console for every seed &middot; audio: design pack
+          assets/v2 (embedded)</footer>
+</div>
+
+<script>
+"use strict";
+/* ================================================================
+   ASSETS (embedded data URIs — build-time substitution)
+   ================================================================ */
+const ASSETS = __ASSET_MANIFEST__;
+
+/* ================================================================
+   seeded RNG (mulberry32) + helpers
+   ================================================================ */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(
+  a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const pick=(rnd,arr)=>arr[Math.floor(rnd()*arr.length)];
+function shuffle(rnd,arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));
+  [arr[i],arr[j]]=[arr[j],arr[i]]}return arr}
+
+const NAMES=["Marlowe","Vega","Ash"];
+const ROLES={Marlowe:"night porter",Vega:"barmaid",Ash:"maintenance"};
+const fmt=m=>"22:"+String(m).padStart(2,"0");
+
+/* ================================================================
+   GENERATOR = PROVER — 12 record-algebra templates (design §4.5)
+   Every template emits: records[], groundTruth per claim, culprit,
+   and a PROOF resting only on record-derived exclusions:
+     worlds = suspects never excluded by any record
+     pass   <=> worlds == {culprit} AND every innocent has >=1 excluding record
+   Red herrings NEVER enter the exclusion math (they implicate,
+   never exclude), so no-innocent-convictable is structural.
+   ================================================================ */
+function generateCase(seed){
+  const rnd=mulberry32(seed);
+  const tier=pick(rnd,[[1,2,3,4],[5,6,7,8],[9,10,11,12]]);   // case difficulty ladder
+  const tpl=pick(rnd,tier);
+  const culprit=pick(rnd,NAMES);
+  const inn=[...shuffle(rnd,NAMES.filter(n=>n!==culprit))];   // [alibiHolder, seen/other]
+  const item=pick(rnd,["the office safe","the tips drawer","the key cabinet"]);
+  const placeName=pick(rnd,["the boiler room","the cellar stairs","the east corridor"]);
+  const motive=pick(rnd,["the missing tips envelope","the roster dispute",
+                         "an old debt from spring","the broken master key"]);
+  const cs={seed,tpl,tier:tier[0],culprit,inn,item,placeName,motive,
+            records:[],claims:[],excl:{},falseLies:0};
+  NAMES.forEach(n=>cs.excl[n]=[]);
+  const R=(id,name,text)=>cs.records.push({id,name,text});
+  const C=(who,text,truth)=>cs.claims.push({who,text,truth});   // truth in {TRUE,FALSE,UNPROVEN}
+
+  /* ---- shared texture claims ---- */
+  function textureClaims(opts={}){
+    const {fakeAt="22:05", liar=null, partial=null, redHerring=false}=opts;
+    for(const n of NAMES){
+      if(n===culprit){
+        C(n,`I was nowhere near ${item} that night.`,"FALSE");
+        C(n,`I was having a nightcap at the staff bar around ${fakeAt}.`,"FALSE");
+        C(n,`${inn[1]} can vouch for me — we talked near ${placeName}.`,"FALSE");
+      }else{
+        C(n,`I was nowhere near ${item} that night.`,"TRUE");
+        if(liar===n){
+          // lying innocent: panics, misremembers — claim contradicts their own alibi record
+          C(n,`I never left the front desk all night, I swear.`,"FALSE");
+        }else if(partial===n){
+          // partial-truth alibi: place right, time wrong
+          C(n,`I was at the staff bar around midnight — ask anyone.`,"UNPROVEN");
+        }else{
+          C(n,`I stepped out for a nightcap at the staff bar around 22:05 — check the ledger.`,"TRUE");
+        }
+        C(n,`I heard footsteps by ${item}, but I swear it wasn't me.`,"UNPROVEN");
+      }
+    }
+    if(redHerring){
+      // one extra claim that reads damning but is disproven by cross-check
+      C(liar,`Fine — I saw someone near ${item}. It was ${inn[0]===liar?inn[1]:inn[0]}. I'm sure of it.`,"FALSE");
+    }
+  }
+
+  switch(tpl){
+  /* ---------- TUTORIAL POOL: R-alibi clears inn[0], R-witness clears inn[1],
+                two records positively place the culprit (v1 algebra family) ---------- */
+  case 1:{
+    const fakeAt=fmt(pick(rnd,[0,5,10]));
+    R("R1","Staff-bar ledger",
+      `Signed entries: ${inn[0]} ordered a nightcap at the staff bar at 22:05, paid by tab, stayed past 22:20.`);
+    R("R2","Service-elevator log",
+      `Elevator carried ${culprit} down to the basement at 22:00 and back up at 22:15.`);
+    R("R3","Camera still — basement",
+      `Basement frame at 22:05 shows one figure in a staff jacket at ${item}; face turned away.`);
+    R("R4","Watch shift sheet",
+      `${inn[0]} (on watch 21:00–23:00) logged seeing ${inn[1]} near ${placeName} at 22:10.`);
+    cs.excl[inn[0]].push("R1"); cs.excl[inn[1]].push("R4");
+    cs.cameraRecord="R3";
+    textureClaims({fakeAt});
+    break;}
+  case 2:{
+    const t1=fmt(pick(rnd,[0,5])), t2=fmt(pick(rnd,[5,10]));
+    R("R1","Laundry chit",
+      `Chit signed by ${inn[0]} at ${t1}: one staff jacket, pressed and collected — counter signed downstairs, ${t1} exactly.`);
+    R("R2","Service-elevator log",
+      `Elevator carried ${culprit} down to the basement at 22:00 and back up at 22:15.`);
+    R("R3","Camera still — basement",
+      `Basement frame at 22:05 shows one figure in a staff jacket at ${item}; face turned away.`);
+    R("R4","Front-desk register",
+      `${inn[1]} initialed the guest register every quarter hour from 22:00 to 22:15 — four initials, no gaps.`);
+    cs.excl[inn[0]].push("R1"); cs.excl[inn[1]].push("R4");
+    cs.cameraRecord="R3";
+    textureClaims({fakeAt:t2});
+    break;}
+  case 3:{
+    R("R1","Staff-bar ledger",
+      `Signed entries: ${inn[0]} ordered a nightcap at the staff bar at 22:05, paid by tab, stayed past 22:20.`);
+    R("R2","Service-elevator log",
+      `Elevator carried ${culprit} down to the basement at 22:00 and back up at 22:15.`);
+    R("R3","Camera still — basement",
+      `Basement frame at 22:05 shows one figure in a staff jacket at ${item}; face turned away.`);
+    R("R4","Telephone exchange slip",
+      `Switchboard connected the lobby phone to the kitchen at 22:10; operator notes ${inn[1]} answered, three minutes on the line.`);
+    cs.excl[inn[0]].push("R1"); cs.excl[inn[1]].push("R4");
+    cs.cameraRecord="R3";
+    textureClaims({fakeAt:fmt(pick(rnd,[0,5]))});
+    break;}
+  case 4:{
+    R("R1","Pay-office receipt",
+      `Receipt book shows ${inn[0]} collecting wages in the pay office, countersigned 22:04, clerk remembers no hurry.`);
+    R("R2","Service-elevator log",
+      `Elevator carried ${culprit} down to the basement at 22:00 and back up at 22:15.`);
+    R("R3","Camera still — basement",
+      `Basement frame at 22:05 shows one figure in a staff jacket at ${item}; face turned away.`);
+    R("R4","Boiler-round sheet",
+      `${inn[1]}'s round card punched at the boiler-room clock 22:06 and again at the far landing 22:12 — impossible from the basement.`);
+    cs.excl[inn[0]].push("R1"); cs.excl[inn[1]].push("R4");
+    cs.cameraRecord="R3";
+    textureClaims({fakeAt:fmt(pick(rnd,[5,10]))});
+    break;}
+
+  /* ---------- PARTIAL-TRUTH POOL: an innocent's alibi CLAIM is half true
+     (place right, time wrong) — the RECORD still decides uniquely ---------- */
+  case 5:{
+    R("R1","Staff-bar ledger",
+      `Signed entries: ${inn[0]} ordered a nightcap at 22:05 — and nothing else until closing. No second staff signature that hour.`);
+    R("R2","Service-elevator log",
+      `Elevator carried ${culprit} down to the basement at 22:00 and back up at 22:15.`);
+    R("R3","Camera still — basement",
+      `Basement frame at 22:05 shows one figure in a staff jacket at ${item}; face turned away.`);
+    R("R4","Watch shift sheet",
+      `${inn[0]} (on watch 21:00–23:00) logged seeing ${inn[1]} crossing ${placeName} at 22:10.`);
+    cs.excl[inn[0]].push("R1"); cs.excl[inn[1]].push("R4");
+    cs.partial=pick(rnd,NAMES.filter(n=>n!=="Vega"&&n!==culprit));
+    cs.partialNote=`${cs.partial} really was at the staff bar — just hours earlier than claimed.`;
+    cs.cameraRecord="R3";
+    textureClaims({partial:cs.partial,fakeAt:"22:05"});
+    break;}
+  case 6:{
+    R("R1","Coat-check ticket stub",
+      `Stub 114: ${inn[0]} checked a coat at 21:55 and claimed it at 22:40 — attendant confirms both ends.`);
+    R("R2","Service-elevator log",
+      `Elevator carried ${culprit} down to the basement at 22:00 and back up at 22:15.`);
+    R("R3","Camera still — basement",
+      `Basement frame at 22:05 shows one figure in a staff jacket at ${item}; face turned away.`);
+    R("R4","Kitchen delivery book",
+      `${inn[1]} signed for the late vegetable delivery at 22:08; driver's duplicate agrees to the minute.`);
+    cs.excl[inn[0]].push("R1"); cs.excl[inn[1]].push("R4");
+    cs.partial=inn[0];
+    cs.partialNote=`${cs.partial}'s bar story is half right — right bar, wrong decade of the evening.`;
+    cs.cameraRecord="R3";
+    textureClaims({partial:inn[0]});
+    break;}
+  case 7:{
+    R("R1","Staff-bar ledger",
+      `Signed entries: ${inn[0]} ordered a nightcap at the staff bar at 22:05, stayed past 22:20.`);
+    R("R2","Service-elevator log",
+      `Elevator carried ${culprit} down to the basement at 22:00 and back up at 22:15.`);
+    R("R3","Camera still — basement",
+      `Basement frame at 22:05 shows one figure in a staff jacket at ${item}; face turned away.`);
+    R("R4","Linen-room log",
+      `${inn[1]} drew fresh linens at 22:02; storeman's ledger countersigns the issue.`);
+    cs.excl[inn[0]].push("R1"); cs.excl[inn[1]].push("R4");
+    cs.partial=inn[1];
+    cs.partialNote=`${cs.partial} was near ${placeName} — at the WRONG end of the hour they claimed.`;
+    cs.cameraRecord="R3";
+    textureClaims({partial:inn[1]});
+    break;}
+  case 8:{
+    R("R1","Safe-deposit register",
+      `Register line 9: ${inn[0]} signed into the document vault 21:48, signed out 22:31 — warded key required both doors.`);
+    R("R2","Service-elevator log",
+      `Elevator carried ${culprit} down to the basement at 22:00 and back up at 22:15.`);
+    R("R3","Camera still — basement",
+      `Basement frame at 22:05 shows one figure in a staff jacket at ${item}; face turned away.`);
+    R("R4","Watch shift sheet",
+      `${inn[1]} logged escorting the inspector past ${placeName} at 22:11; the inspector's own diary agrees.`);
+    cs.excl[inn[0]].push("R1"); cs.excl[inn[1]].push("R4");
+    cs.partial=inn[0];
+    cs.partialNote=`${cs.partial}'s "locked in the vault all night" is true of the DOOR, not the hour.`;
+    cs.cameraRecord="R3";
+    textureClaims({partial:inn[0]});
+    break;}
+
+  /* ---------- LYING-INNOCENT + RED-HERRING POOL: an innocent panics and
+     lies about their own alibi; one record implicates an innocent until
+     cross-checked against another record. Herring never enters exclusion math. ---------- */
+  case 9:{
+    R("R1","Staff-bar ledger",
+      `Signed entries: a nightcap charged to room service at 22:05, waiter's memory: ${inn[0]}, paid cash, tip too big.`);
+    R("R2","Service-elevator log",
+      `Elevator carried ${culprit} down to the basement at 22:00 and back up at 22:15.`);
+    R("R3","Camera still — basement",
+      `Basement frame at 22:05 shows one figure in a staff jacket at ${item}; face turned away.`);
+    R("R4","Watch shift sheet",
+      `${inn[0]} logged seeing ${inn[1]} near ${placeName} at 22:10 — alone.`);
+    R("R5","Scuffed shoeprint cast",
+      `Fresh cast from the corridor: a size-11 heel print, matches the spare shoes kept in ${inn[0]}'s locker.`);
+    cs.herring={record:"R5",implicates:inn[0],
+      resolvedBy:`R1 puts ${inn[0]} at the staff bar, cash in hand, while the dust was still settling.`};
+    cs.excl[inn[0]].push("R1"); cs.excl[inn[1]].push("R4");
+    cs.liar=inn[0];
+    cs.liarNote=`${inn[0]} panicked about the shoes and lied about leaving the desk — the ledger catches the lie.`;
+    cs.cameraRecord="R3";
+    textureClaims({liar:inn[0],redHerring:true});
+    break;}
+  case 10:{
+    R("R1","Laundry chit",
+      `Chit signed by ${inn[0]} at 22:01: one staff jacket, pressed and collected — counter signed downstairs.`);
+    R("R2","Service-elevator log",
+      `Elevator carried ${culprit} down to the basement at 22:00 and back up at 22:15.`);
+    R("R3","Camera still — basement",
+      `Basement frame at 22:05 shows one figure in a staff jacket at ${item}; face turned away.`);
+    R("R4","Front-desk register",
+      `${inn[1]} initialed the guest register every quarter hour from 22:00 to 22:15 — four initials, no gaps.`);
+    R("R5","Torn cuff fragment",
+      `Cuff torn from a staff jacket snagged on the cabinet lock; monogram thread matches shirts issued to ${inn[1]}.`);
+    cs.herring={record:"R5",implicates:inn[1],
+      resolvedBy:`R4 has ${inn[1]} initialing the register through the whole window — and the register pen's ink matches the tear's smear.`};
+    cs.excl[inn[0]].push("R1"); cs.excl[inn[1]].push("R4");
+    cs.liar=inn[1];
+    cs.liarNote=`${inn[1]} swore to four perfect initials — then panicked when the torn cuff surfaced.`;
+    cs.cameraRecord="R3";
+    textureClaims({liar:inn[1],redHerring:true});
+    break;}
+  case 11:{
+    R("R1","Staff-bar ledger",
+      `Signed entries: ${inn[0]} ordered a nightcap at the staff bar at 22:05, stayed past 22:20.`);
+    R("R2","Service-elevator log",
+      `Elevator carried ${culprit} down to the basement at 22:00 and back up at 22:15.`);
+    R("R3","Camera still — basement",
+      `Basement frame at 22:05 shows one figure in a staff jacket at ${item}; face turned away.`);
+    R("R4","Telephone exchange slip",
+      `Switchboard connected the lobby phone to the kitchen at 22:10; operator notes ${inn[1]} answered, three minutes on the line.`);
+    R("R5","Second camera still — stairs",
+      `Stairwell frame 22:07: a figure with ${inn[0]}'s build halfway down to the basement, face lost to grain.`);
+    cs.herring={record:"R5",implicates:inn[0],
+      resolvedBy:`R1 has ${inn[0]} signing the bar tab at 22:05 and staying put — the stairwell frame is timestamped against its own film batch, twenty minutes fast.`};
+    cs.excl[inn[0]].push("R1"); cs.excl[inn[1]].push("R4");
+    cs.liar=inn[0];
+    cs.liarNote=`${inn[0]} denied leaving the bar — the truth was duller than the lie, which is why they told it.`;
+    cs.cameraRecord="R3";
+    textureClaims({liar:inn[0],redHerring:true});
+    break;}
+  case 12:{
+    R("R1","Pay-office receipt",
+      `Receipt book shows ${inn[0]} collecting wages in the pay office, countersigned 22:04.`);
+    R("R2","Service-elevator log",
+      `Elevator carried ${culprit} down to the basement at 22:00 and back up at 22:15.`);
+    R("R3","Camera still — basement",
+      `Basement frame at 22:05 shows one figure in a staff jacket at ${item}; face turned away.`);
+    R("R4","Boiler-round sheet",
+      `${inn[1]}'s round card punched at the boiler-room clock 22:06 and the far landing 22:12.`);
+    R("R5","Anonymous note",
+      `Block capitals on bar letterhead: "${inn[1]} did it. Check the linen." Unsigned, unmailed, found behind the desk drawer.`);
+    cs.herring={record:"R5",implicates:inn[1],
+      resolvedBy:`The note names ${placeName} linen — this hotel keeps none — and R4's round card has ${inn[1]} punching clocks across the window.`};
+    cs.excl[inn[0]].push("R1"); cs.excl[inn[1]].push("R4");
+    cs.liar=inn[1];
+    cs.liarNote=`${inn[1]} wrote the note themselves, to look cooperative — it only made them look guilty.`;
+    cs.cameraRecord="R3";
+    textureClaims({liar:inn[1],redHerring:true});
+    break;}
+  }
+
+  /* assign stable ids */
+  cs.claims.forEach((c,i)=>c.id=NAMES.indexOf(c.who)+"-"+i);
+  return cs;
+}
+
+/* ---------- PROVER: brute-force over record-derived predicates ---------- */
+function proveCase(cs){
+  const worlds=NAMES.filter(n=>cs.excl[n].length===0);
+  const uniqueCulprit={
+    holds:worlds.length===1&&worlds[0]===cs.culprit,
+    worlds,
+    detail:worlds.map(w=>`${w}${cs.excl[w].length?" (excluded: "+cs.excl[w]+")":" (NOT excluded)"}`)
+                 .join("; ")};
+  const violations=NAMES.filter(n=>n!==cs.culprit&&cs.excl[n].length===0)
+    .map(n=>`${n} lacks a record-backed alibi`);
+  return {uniqueCulprit,noInnocentConvicts:{holds:violations.length===0,violations}};
+}
+function printProofs(cs){
+  const p=proveCase(cs);
+  console.log(`%c[LIE TO ME generator-prover] seed=${cs.seed} template=T${cs.tpl}`,
+              "color:#e2b93b;font-weight:bold");
+  console.log(`PROOF unique-culprit: ${p.uniqueCulprit.holds} — worlds consistent with the records: {${p.uniqueCulprit.worlds.join(", ")||"\u2205"}} (${p.uniqueCulprit.detail})`);
+  console.log(`PROOF no-innocent-convicts: ${p.noInnocentConvicts.holds}`,
+              p.noInnocentConvicts.holds?
+                `— every innocent holds a record-backed alibi (${NAMES.filter(n=>n!==cs.culprit).map(n=>cs.excl[n].join("+")).join("; ")})`:
+                `VIOLATIONS: ${p.noInnocentConvicts.violations.join("; ")}`);
+}
+
+/* ================================================================
+   LTM_SFX — playback port (assets/v2/sfx/sfx.js contract), embedded.
+   init() on first gesture; play(name); setMusicState({falseStamps});
+   cutAll() for the wrong-lock silence. Durations from sfx-params.json.
+   ================================================================ */
+const LTM_SFX=(()=> {
+  let ctx=null,master=null;
+  const buffers={},musicBuf={rain:null,bass:null,drums:null};
+  let rainSrc=null,bassSrc=null,drumSrc=null,rainGain=null,bassGain=null,drumGain=null;
+  let state={falseStamps:0},dead=false;
+
+  async function init(){
+    if(ctx)return;
+    try{
+      ctx=new (window.AudioContext||window.webkitAudioContext)();
+    }catch(e){dead=true;return}
+    master=ctx.createGain();master.gain.value=.9;master.connect(ctx.destination);
+    await Promise.all(Object.keys(ASSETS.sfx).map(async n=>{
+      try{
+        buffers[n]=await ctx.decodeAudioData(await (await fetch(ASSETS.sfx[n])).arrayBuffer());
+      }catch(e){}
+    }));
+    await Promise.all(Object.keys(ASSETS.music).map(async k=>{
+      try{
+        musicBuf[k]=await ctx.decodeAudioData(await (await fetch(ASSETS.music[k])).arrayBuffer());
+      }catch(e){}
+    }));
+    // ambience bed: rain loop, -18 LUFS-ish bed level, gentle fade-in
+    if(musicBuf.rain){
+      rainGain=ctx.createGain();rainGain.gain.value=0;
+      rainSrc=ctx.createBufferSource();rainSrc.buffer=musicBuf.rain;rainSrc.loop=true;
+      rainSrc.connect(rainGain).connect(master);rainSrc.start();
+      rainGain.gain.setTargetAtTime(Math.pow(10,-18/20),ctx.currentTime+.05,0.6);
+    }
+    _updateMusic();
+  }
+  function play(name){
+    if(!ctx||dead||!buffers[name])return;
+    const src=ctx.createBufferSource();src.buffer=buffers[name];
+    const g=ctx.createGain();g.gain.value=1;
+    src.connect(g).connect(master);src.start();
+    if(name.startsWith("stamp-thunk")||name==="gavel-slam")_duck();
+  }
+  let duckTimer=null;
+  function _duck(){ // bed dips under heavy hits, recovers ~1.5s (spec §1)
+    for(const g of [rainGain,bassGain,drumGain])if(g){
+      const t=ctx.currentTime,v=g===drumGain?(g.gain.value||1):g.gain.value;
+      g.gain.cancelScheduledValues(t);g.gain.setTargetAtTime(v*.4,t,.02);
+    }
+    clearTimeout(duckTimer);duckTimer=setTimeout(_recover,600);
+  }
+  function _recover(){
+    if(!ctx)return;const t=ctx.currentTime;
+    if(rainGain)rainGain.gain.setTargetAtTime(Math.pow(10,-18/20),t,.5);
+    _updateMusic();
+  }
+  const STEPS=[110.0,98.0,87.31,73.42];   // A2 G2 F2 D2 descent (spec §2.2)
+  function setMusicState(s){state={...state,...s};_updateMusic()}
+  function _updateMusic(){
+    if(!ctx||state.falseStamps<1)return;
+    const fs=Math.min(state.falseStamps,3);
+    const rate=STEPS[Math.min(fs,STEPS.length)-1]/110.0;
+    if(!bassSrc&&musicBuf.bass){
+      bassSrc=ctx.createBufferSource();bassSrc.buffer=musicBuf.bass;bassSrc.loop=true;
+      bassSrc.playbackRate.value=rate;
+      bassGain=ctx.createGain();
+      bassSrc.connect(bassGain).connect(master);bassSrc.start();
+    }else if(bassSrc){
+      bassSrc.playbackRate.setTargetAtTime(rate,ctx.currentTime,.15);
+    }
+    if(bassGain)bassGain.gain.setTargetAtTime(
+      Math.pow(10,(-20+6*(fs-1))/20),ctx.currentTime,.3);
+    if(fs>=2&&!drumSrc&&musicBuf.drums){
+      drumSrc=ctx.createBufferSource();drumSrc.buffer=musicBuf.drums;drumSrc.loop=true;
+      drumGain=ctx.createGain();drumGain.gain.value=Math.pow(10,-10/20);
+      drumSrc.connect(drumGain).connect(master);drumSrc.start();
+    }
+  }
+  function cutAll(){ // wrong conviction: instant full silence (spec §2.3)
+    dead=true;
+    for(const s of [rainSrc,bassSrc,drumSrc])if(s)try{s.stop()}catch(e){}
+    rainSrc=bassSrc=drumSrc=null;
+    setTimeout(()=>{dead=false;_rebuildBed()},900); // 0.9s total silence, then bed returns
+  }
+  async function _rebuildBed(){
+    if(!ctx)return;
+    state.falseStamps=0;bassSrc=null;drumSrc=null;
+    if(musicBuf.rain){
+      rainGain=ctx.createGain();rainGain.gain.value=0;
+      rainSrc=ctx.createBufferSource();rainSrc.buffer=musicBuf.rain;rainSrc.loop=true;
+      rainSrc.connect(rainGain).connect(master);rainSrc.start();
+      rainGain.gain.setTargetAtTime(Math.pow(10,-18/20),ctx.currentTime+.05,0.6);
+    }
+  }
+  return {init,play,setMusicState,cutAll,
+          get ready(){return !!ctx},get context(){return ctx}};
+})();
+
+/* ================================================================
+   CONTRADICTION CHAINS
+   ================================================================ */
+function chainFor(cs,accused){
+  const camRec=cs.records.find(r=>r.id===cs.cameraRecord);
+  const elevRec=cs.records.find(r=>r.id.startsWith("R2"));
+  if(accused===cs.culprit)return[
+`ACCUSATION LOCKED: ${accused} (${ROLES[accused]})`,
+``,
+`CHAIN OF CONTRADICTION — every lie collapses against the records:`,
+`1. "I was having a nightcap at the staff bar around 22:05."`,
+`   The ledger's staff entries that hour belong to someone else. Alibi invented.`,
+`2. "I was nowhere near ${cs.item}."`,
+`   vs ${elevRec.id} — ${elevRec.text}`,
+`   vs ${camRec.id} — ${camRec.text}`,
+`3. The vouching witness is disproven by their own log — nobody saw ${accused} anywhere but the basement window.`,
+``,
+`Motive surfaced: ${cs.motive}. Case closed.`].join("\n");
+  return[
+`ACCUSATION LOCKED: ${accused} (${ROLES[accused]})`,
+``,
+`WRONG — you just convicted an innocent.`,
+...cs.inn.map((n,i)=>{
+  const r=cs.records.find(rec=>cs.excl[n].includes(rec.id));
+  return `The records clear them: ${r?r.id+" — "+r.text:"—"}`;
+}),
+`Meanwhile the elevator and camera put ${cs.culprit} at ${cs.item} inside the window — the only suspect no record accounts for.`].join("\n");
+}
+
+/* ================================================================
+   RENDER + GAME STATE
+   ================================================================ */
+let CS=null,locked=false,audioArmed=false,caseNum=1,seedBase=null;
+
+function newCase(){
+  const seed=((Date.now()%100000)+caseNum*7919)|0;
+  CS=generateCase(seed);locked=false;
+  seedBase=seed;
+  document.getElementById("seedlbl").textContent="#"+seed;
+  document.getElementById("caselbl").textContent=
+    `CASE ${caseNum} OF 3 — T${CS.tpl}${CS.tier===1?"":CS.tier===5?" · partial truths abroad":" · someone is lying"}`;
+  const briefBits=[];
+  if(CS.partial)briefBits.push(CS.partialNote);
+  if(CS.liar)briefBits.push(CS.liarNote);
+  document.getElementById("brief").textContent=
+    `${CS.item.charAt(0).toUpperCase()+CS.item.slice(1)} was opened between 22:00 and 22:15. `+
+    `Three staff were in the building.`+
+    (CS.tier>1?` Watch the times — not everyone tells the whole truth.`:``)+
+    (CS.tier>5?` And someone with no reason to lie, will.`:``);
+  renderSuspects();renderRecords();
+  document.getElementById("pickrow").innerHTML=
+    NAMES.map(n=>`<label><input type="radio" name="pick" value="${n}">${n}</label>`).join("");
+  const v=document.getElementById("verdict");v.textContent="";v.style.color="";
+  const ch=document.getElementById("chain");ch.style.display="none";ch.classList.remove("bad");
+  ch.textContent="";
+  document.getElementById("lockbtn").style.display="";
+  document.getElementById("lockbtn").disabled=true;
+  document.getElementById("nextcase").style.display="none";
+  updateLockState();
+  printProofs(CS);   /* spec: proofs printed per seed or the case doesn't ship */
+}
+function portraitKey(n,st){return ASSETS.portraits[n+"-"+st]}
+function suspectLevel(n){return CS[n+"_lvl"]||0}
+
+function renderSuspects(){
+  const d=document.getElementById("desk");d.innerHTML="";
+  for(const n of NAMES){
+    const el=document.createElement("div");el.className="suspect";el.dataset.name=n;
+    el.innerHTML=`<div class="portrait" style="background-image:url('${portraitKey(n,"composed")}');--img-composed:url('${portraitKey(n,"composed")}');--img-fraying:url('${portraitKey(n,"fraying")}');--img-broken:url('${portraitKey(n,"broken")}')"></div>
+      <span class="sname">${n}</span> <span class="srole">— ${ROLES[n]}</span>`;
+    CS.claims.filter(c=>c.who===n).forEach(c=>{
+      el.insertAdjacentHTML("beforeend",
+        `<label class="claim" data-id="${c.id}">
+          <span class="stamp st-none" id="st-${c.id}" data-s="none">&middot;</span>${c.text}</label>`);
+    });
+    d.appendChild(el);
+  }
+}
+function renderRecords(){
+  const rEl=document.getElementById("records");rEl.innerHTML="";
+  CS.records.forEach((r,i)=>{
+    const isCam=r.id===CS.cameraRecord;
+    const cls="rec"+(r.id==="R2"||r.id==="R4"&&CS.tpl>=2&&CS.tpl<=4?" logstrip":"")
+              +(isCam?" polaroid":"");
+    rEl.insertAdjacentHTML("beforeend",
+      `<div class="${cls}" id="rec-${r.id}"
+            style="${!isCam&&!cls.includes("logstrip")?'background-image:url(\''+ASSETS.dressing["ledger-page"]+'\')':''}${isCam?';--dress-polaroid:url(\''+ASSETS.dressing["polaroid-frame"]+'\')':''}${cls.includes("logstrip")?';background-image:url(\''+ASSETS.dressing["elevator-log-strip"]+'\')':''}">
+        <span class="tag">${r.id}</span><b>${r.name}.</b> ${r.text}</div>`);
+  });
+}
+
+/* ---------- stamps ---------- */
+document.addEventListener("click",async e=>{
+  if(!audioArmed){audioArmed=true;await LTM_SFX.init();
+    document.getElementById("audiolbl").textContent="audio live";audioProbe();}
+  const cl=e.target.closest(".claim");
+  if(!cl||locked)return;
+  const st=document.getElementById("st-"+cl.dataset.id);
+  const cur=st.dataset.s,next=cur==="none"?"TRUE":cur==="TRUE"?"FALSE":cur==="FALSE"?"UNPROVEN":"TRUE";
+  st.dataset.s=next;st.className="stamp st-"+next+(next!=="none"?" punch":"");
+  st.textContent=next==="none"?"\u00b7":next;
+  if(next==="TRUE"||next==="FALSE"){
+    LTM_SFX.play(pick(Math.random,["stamp-thunk-1","stamp-thunk-2","stamp-thunk-3"]));
+  }
+  if(next==="FALSE"){
+    const claim=CS.claims.find(c=>c.id===cl.dataset.id);
+    const who=claim.who;
+    if(claim.truth==="FALSE"){
+      LTM_SFX.play("string-twang");
+      CS[who+"_lvl"]=Math.min((CS[who+"_lvl"]||0)+1,2);
+      const el=cl.closest(".suspect");
+      el.classList.remove("fraying","broken");
+      el.querySelector(".portrait").style.backgroundImage=
+        `url('${portraitKey(who,CS[who+"_lvl"]===1?"fraying":"broken")}')`;
+      if(CS[who+"_lvl"]===1)el.classList.add("fraying");else el.classList.add("broken");
+      /* falseStamps = distinct suspects pushed down >=1 level, capped 3 (spec §2.2) */
+      LTM_SFX.setMusicState({falseStamps:
+        Math.min(3,NAMES.filter(n=>(CS[n+"_lvl"]||0)>=1).length)||1});
+    }
+  }else if(next==="UNPROVEN"){
+    LTM_SFX.play("release-stamp");
+  }
+  updateLockState();
+});
+/* audio probe: logs AudioContext state once armed (QA aid) */
+function audioProbe(){console.log("[LTM audio] context state:",LTM_SFX.context&&LTM_SFX.context.state)}
+
+function updateLockState(){
+  const all=document.querySelectorAll(".claim .stamp");
+  const done=[...all].every(s=>s.dataset.s!=="none");
+  const btn=document.getElementById("lockbtn");
+  btn.disabled=!done;
+  btn.textContent=done?"LOCK THE ACCUSATION":
+    `STAMP EVERY CLAIM FIRST (${[...all].filter(s=>s.dataset.s!=="none").length}/${all.length})`;
+}
+
+/* ---------- LOCK: friction + juice chains ---------- */
+document.getElementById("lockbtn").addEventListener("click",()=>{
+  const sel=document.querySelector('input[name="pick"]:checked');
+  const v=document.getElementById("verdict"),ch=document.getElementById("chain");
+  if(!sel){v.textContent="Pick a suspect first.";v.style.color="var(--false)";return}
+  locked=true;
+  const accused=sel.value,win=accused===CS.culprit;
+  gradeStamps();
+  if(win)correctLock(accused,v,ch);else wrongLock(accused,v,ch);
+});
+
+function gradeStamps(){
+  document.querySelectorAll(".claim").forEach(el=>{
+    const st=document.getElementById("st-"+el.dataset.id),got=st.dataset.s;
+    if(got==="none")return;
+    const claim=CS.claims.find(c=>c.id===el.dataset.id);
+    el.classList.add(claim.truth===got?"ggraded-yes":"ggraded-no");
+    st.textContent=got.replace("UNPROVEN","UNPRVN")+(claim.truth===got?" \u2713":" \u2717");
+  });
+}
+
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+async function correctLock(accused,v,ch){
+  const btn=document.getElementById("lockbtn");btn.style.display="none";
+  v.textContent="LOCK ACCEPTED — watch the desk.";v.style.color="var(--acc)";
+  LTM_SFX.play("gavel-slam");
+  document.body.classList.add("hitstop");            /* 350ms hit-stop */
+  await sleep(350);
+  document.body.classList.remove("hitstop");
+  document.body.classList.add("lamp");               /* lamp flicker + light dip */
+  LTM_SFX.play("lamp-flicker-buzz");
+  await sleep(1050);
+  document.body.classList.remove("lamp");
+  const guilty=document.querySelector(`.suspect[data-name="${CSS.escape(CS.culprit)}"]`);
+  guilty.classList.remove("fraying","broken");guilty.classList.add("shatter");
+  guilty.querySelector(".portrait").style.backgroundImage=`url('${portraitKey(CS.culprit,"broken")}')`;
+  LTM_SFX.play("string-twang");
+  LTM_SFX.play("bass-drop");                          /* snap payoff (spec §2.4) */
+  await sleep(500);
+  /* typed chain with typewriter clatter */
+  ch.style.display="block";
+  const text=chainFor(CS,accused);let i=0;
+  const clatter=setInterval(()=>LTM_SFX.play("typewriter-clatter"),420);
+  const tick=setInterval(()=>{
+    i+=3;ch.textContent=text.slice(0,i);
+    if(i>=text.length){clearInterval(tick);clearInterval(clatter);
+      LTM_SFX.play("release-stamp");
+      v.textContent="CASE CLOSED.";v.style.color="var(--true)";
+      document.getElementById("nextcase").style.display="";
+    }
+  },24);
+}
+
+async function wrongLock(accused,v,ch){
+  const btn=document.getElementById("lockbtn");btn.style.display="none";
+  v.textContent="LOCK REJECTED — wrong conviction.";v.style.color="var(--false)";
+  LTM_SFX.play("gavel-slam");
+  LTM_SFX.cutAll();                                    /* 0.9s total silence (spec §2.3) */
+  await sleep(900);
+  ch.style.display="block";ch.classList.add("bad");
+  /* exculpatting records thud onto the desk one by one */
+  const exRecs=CS.records.filter(r=>csExculpates(r));
+  for(const r of exRecs){
+    const el=document.getElementById("rec-"+r.id);
+    if(el){el.scrollIntoView({block:"center",behavior:"smooth"});el.classList.add("reveal")}
+    LTM_SFX.play(pick(Math.random,["stamp-thunk-1","stamp-thunk-2","stamp-thunk-3"]));
+    await sleep(520);
+  }
+  ch.textContent=chainFor(CS,accused);
+  LTM_SFX.play("release-stamp");
+  v.textContent="WRONG CONVICTION — study the desk, then name the thief again.";
+  v.style.color="var(--false)";
+  /* re-arm: same case continues (feeler mercy rule) */
+  locked=false;
+  document.querySelectorAll(".claim.ggraded-yes,.claim.ggraded-no")
+    .forEach(el=>el.classList.remove("ggraded-yes","ggraded-no"));
+  btn.style.display="";btn.textContent="LOCK THE ACCUSATION AGAIN";
+}
+function csExculpates(r){return NAMES.some(n=>n!==CS.culprit&&CS.excl[n].includes(r.id))}
+
+document.getElementById("nextcase").addEventListener("click",()=>{
+  caseNum++;if(caseNum>3){finishRun();return}
+  newCase();
+});
+function finishRun(){
+  const w=document.querySelector(".wrap");
+  w.innerHTML=`<h1>LIE TO ME <small>The Breaking Point</small></h1>
+    <p class="brief" style="margin-top:30px">Three cases, three desks, three liars.</p>
+    <p>All seeds proved: unique culprit, no innocent convictable — see console.</p>
+    <p style="color:var(--dim)">Reload to run the desk again.</p>`;
+}
+
+/* ---------- boot ---------- */
+newCase();
+</script>
+</body>
+</html>

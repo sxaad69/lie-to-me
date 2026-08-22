@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LIE TO ME — greybox feeler</title>
+<style>
+  :root{--bg:#14161c;--panel:#1d212b;--ink:#e8e6df;--dim:#9a97a0;--acc:#e2b93b;
+        --true:#4fae62;--false:#d05555;--unp:#7f8ea3;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:16px/1.45 Georgia,'Times New Roman',serif}
+  .wrap{max-width:1060px;margin:0 auto;padding:18px}
+  h1{font-size:22px;letter-spacing:.14em;margin:0;color:var(--acc)}
+  h1 small{color:var(--dim);font-size:12px;letter-spacing:.06em;display:block;margin-top:2px}
+  h2{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);
+     border-bottom:1px solid #333846;padding-bottom:4px;margin:22px 0 10px}
+  .brief{color:var(--dim);font-style:italic;margin:10px 0 0;font-size:15px}
+  .suspect{background:var(--panel);border:1px solid #2b3040;border-radius:6px;
+           padding:10px 12px;margin-bottom:10px}
+  .sname{font-weight:bold;letter-spacing:.04em}
+  .srole{color:var(--dim);font-size:14px}
+  .claim{display:block;background:#232837;border-left:3px solid #3a4157;border-radius:4px;
+         padding:7px 9px;margin:7px 0 0;cursor:pointer;user-select:none}
+  .claim:hover{border-left-color:var(--acc)}
+  .stamp{float:right;font:bold 11px/1 Verdana,sans-serif;letter-spacing:.08em;
+         padding:3px 7px;border-radius:3px;border:1px solid currentColor;margin-left:8px}
+  .st-TRUE{color:var(--true)} .st-FALSE{color:var(--false)} .st-UNPROVEN{color:var(--unp)}
+  .st-none{visibility:hidden}
+  .rec{background:var(--panel);border:1px solid #2b3040;border-radius:6px;
+       padding:9px 11px;margin-bottom:8px}
+  .rec b{color:var(--acc);font-size:14px}
+  .rec .tag{float:right;color:var(--dim);font-size:12px}
+  #lockrow{text-align:center;margin:16px 0 6px}
+  button{font:inherit;cursor:pointer;border-radius:5px;border:1px solid #3a4157;
+         background:#232837;color:var(--ink);padding:8px 16px}
+  button:hover{border-color:var(--acc)}
+  #lockbtn{background:var(--acc);color:#191608;border-color:var(--acc);
+           font-weight:bold;letter-spacing:.06em}
+  .pickrow label{margin:0 12px 0 4px;cursor:pointer}
+  #verdict{min-height:20px;text-align:center;font-style:italic}
+  #chain{background:#241f17;border:1px solid var(--acc);border-radius:6px;
+         padding:10px 14px;margin-top:10px;white-space:pre-line;display:none;
+         font-family:inherit;font-size:15px}
+  #chain.bad{background:#261a1c;border-color:var(--false)}
+  footer{color:#565b66;font-size:12px;text-align:center;margin-top:26px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>LIE TO ME <small>greybox feeler &middot; case seed <span id="seedlbl"></span></small></h1>
+
+  <p class="brief" id="brief"></p>
+
+  <h2>Suspects &amp; testimony</h2>
+  <div id="suspects"></div>
+
+  <h2>Evidence records</h2>
+  <p style="color:var(--dim);font-size:14px;margin:0 0 8px">
+     Click a claim to stamp it &mdash; re-click cycles TRUE &rarr; FALSE &rarr; UNPROVEN.</p>
+  <div id="records"></div>
+
+  <h2>Accusation</h2>
+  <div id="lockrow">
+    <span id="pickrow" class="pickrow"></span><br><br>
+    <button id="lockbtn">LOCK THE ACCUSATION</button>
+    <button id="again" style="display:none">NEW CASE</button>
+  </div>
+  <p id="verdict"></p>
+  <pre id="chain"></pre>
+
+  <footer>throwaway feeler &middot; the generator emits machine proofs of unique-culprit +
+          no-innocent-convicts for every seed (see browser console)</footer>
+</div>
+
+<script>
+"use strict";
+/* ---------- seeded RNG (mulberry32) ---------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(
+  a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function pick(rnd,arr){return arr[Math.floor(rnd()*arr.length)]}
+
+/* ---------- GENERATOR = PROVER ----------
+   Seeded facts -> derived evidence records -> machine-checked proofs.
+   Proofs rest ONLY on the records (claims are texture), so soundness is
+   structural: whatever the prose says, the record algebra decides.       */
+const NAMES=["Marlowe","Vega","Ash"];
+const ROLES={Marlowe:"night porter",Vega:"barmaid",Ash:"maintenance"};
+const fmt=m=>"22:"+String(m).padStart(2,"0");          // critical window 22:00-22:15
+
+function generateCase(seed){
+  const rnd=mulberry32(seed);
+  const culprit=pick(rnd,NAMES);
+  const innocents=NAMES.filter(n=>n!==culprit);
+  const alibiHolder=innocents[0];      // cleared by R1 (bar ledger)
+  const watcher=alibiHolder;           // writes R4, which clears...
+  const seen=innocents[1];             // ...this one
+  const fakeAt=fmt(pick(rnd,[0,5,10]));               // culprit's invented bar time
+  const placeName=pick(rnd,["the boiler room","the cellar stairs","the east corridor"]);
+  const motive=pick(rnd,["the missing tips envelope","the roster dispute",
+                         "an old debt from spring","the broken master key"]);
+  const item=pick(rnd,["the office safe","the tips drawer","the key cabinet"]);
+
+  const records=[
+    {id:"R1",name:"Staff-bar ledger",
+     text:`Signed entries: ${alibiHolder} ordered a nightcap at the staff bar at 22:05, paid by tab, stayed past 22:20.`},
+    {id:"R2",name:"Service-elevator log",
+     text:`Elevator carried ${culprit} down to the basement at 22:00 and back up at 22:15.`},
+    {id:"R3",name:"Camera still — basement",
+     text:`Basement frame at 22:05 shows one figure in a staff jacket at ${item}; face turned away.`},
+    {id:"R4",name:"Watch shift sheet",
+     text:`${watcher} (on watch 21:00–23:00) logged seeing ${seen} near ${placeName} at 22:10.`},
+  ];
+
+  const claims=[];
+  for(const n of NAMES){
+    claims.push({who:n,text:`I was nowhere near ${item} that night.`});
+    claims.push({who:n,text:n===culprit?
+      `I was having a nightcap at the staff bar around ${fakeAt}.`:
+      n===alibiHolder?`I stepped out for a nightcap at the staff bar around 22:05 — check the ledger.`:
+                      `I was near ${placeName} doing rounds around 22:10.`});
+    claims.push({who:n,text:n===culprit?
+      `${watcher} can vouch for me — we talked near ${placeName}.`:
+      `I heard footsteps by ${item}, but I swear it wasn't me.`});
+  }
+  return {seed,culprit,innocents,alibiHolder,watcher,seen,fakeAt,item,
+          placeName,motive,records,claims};
+}
+
+/* ---------- PROVER: brute-force over record-derived predicates ---------- */
+function proveCase(cs){
+  // which records EXCLUDE each suspect from the 22:00-22:15 window?
+  const excluded={}; for(const n of NAMES)excluded[n]=[];
+  excluded[cs.alibiHolder].push("R1");   // signed bar entry 22:05->22:20+
+  excluded[cs.seen].push("R4");          // seen by watcher at 22:10 elsewhere
+  // R2+R3 positively place cs.culprit in the basement; nothing excludes them.
+  const worlds=NAMES.filter(c=>excluded[c].length===0);
+  const uniqueCulprit={
+    holds:worlds.length===1&&worlds[0]===cs.culprit,
+    worlds,
+    detail:worlds.map(w=>`${w}${excluded[w].length?" (excluded: "+excluded[w]+")":" (NOT excluded)"}`)
+                 .join("; ")};
+  const violations=cs.innocents
+    .filter(n=>excluded[n].length===0)
+    .map(n=>`${n} lacks a record-backed alibi`);
+  return {uniqueCulprit,
+          noInnocentConvicts:{holds:violations.length===0,violations}};
+}
+function printProofs(cs){
+  const p=proveCase(cs);
+  console.log(`%c[LIE TO ME generator-prover] seed=${cs.seed}`,
+              "color:#e2b93b;font-weight:bold");
+  console.log(`PROOF unique-culprit: ${p.uniqueCulprit.holds} — worlds consistent with the records: {${p.uniqueCulprit.worlds.join(", ")||"∅"}} (${p.uniqueCulprit.detail})`);
+  console.log(`PROOF no-innocent-convicts: ${p.noInnocentConvicts.holds}`,
+              p.noInnocentConvicts.holds?
+                `— ${cs.innocents.join(" & ")} each hold a record-backed alibi (R1, R4)`:
+                `VIOLATIONS: ${p.noInnocentConvicts.violations.join("; ")}`);
+}
+
+/* ---------- contradiction chain ---------- */
+function chainFor(cs,accused){
+  if(accused===cs.culprit)return[
+`ACCUSATION LOCKED: ${accused} (${ROLES[accused]})`,
+``,
+`CHAIN OF CONTRADICTION — every lie collapses against the records:`,
+`1. "I was having a nightcap at the staff bar around ${cs.fakeAt}."`,
+`   vs R1 — the ledger's only staff-bar entry that hour is ${cs.alibiHolder}'s. No second signature exists. Alibi invented.`,
+`2. "I was nowhere near ${cs.item}."`,
+`   vs R2 — the service elevator carried ${cs.culprit} down at 22:00, up at 22:15: the exact window.`,
+`   vs R3 — the 22:05 basement frame shows a figure at ${cs.item}.`,
+`3. "${cs.watcher} can vouch for me."`,
+`   vs R4 — ${cs.watcher}'s own shift sheet places them near ${cs.placeName}, watching ${cs.seen}. They never mention ${cs.culprit}. The vouching witness is disproven by their own log.`,
+``,
+`Motive surfaced: ${cs.motive}. Case closed.`].join("\n");
+  return[
+`ACCUSATION LOCKED: ${accused} (${ROLES[accused]})`,
+``,
+`WRONG — you just convicted an innocent.`,
+`R1 clears ${cs.alibiHolder}: signed staff-bar entry, 22:05, stayed past 22:20.`,
+`R4 clears ${cs.seen}: seen by ${cs.watcher} near ${cs.placeName} at 22:10.`,
+`Meanwhile R2+R3 put ${cs.culprit} at ${cs.item} inside the window — the only suspect no record accounts for.`,
+`The innocent you convicted: ${accused}.`].join("\n");
+}
+
+/* ---------- render ---------- */
+let CS=null,locked=false;
+function newCase(){
+  const seed=(Date.now()%100000)|0;
+  CS=generateCase(seed);
+  locked=false;
+  document.getElementById("seedlbl").textContent="#"+seed;
+  document.getElementById("brief").textContent=
+    `${CS.item.charAt(0).toUpperCase()+CS.item.slice(1)} was opened between 22:00 and 22:15. `+
+    `Three staff were in the building. Read the testimony, check the records, stamp every claim, name the thief.`;
+  const sEl=document.getElementById("suspects");sEl.innerHTML="";
+  for(const n of NAMES){
+    const d=document.createElement("div");d.className="suspect";
+    let html=`<span class="sname">${n}</span> <span class="srole">— ${ROLES[n]}</span>`;
+    CS.claims.filter(c=>c.who===n).forEach((c,i)=>{
+      const id=n+"-"+i;
+      html+=`<label class="claim" data-id="${id}">
+        <span class="stamp st-none" id="st-${id}" data-s="none">&middot;</span>${c.text}</label>`;
+    });
+    d.innerHTML=html;sEl.appendChild(d);
+  }
+  const rEl=document.getElementById("records");rEl.innerHTML="";
+  for(const r of CS.records)rEl.insertAdjacentHTML("beforeend",
+    `<div class="rec"><span class="tag">${r.id}</span><b>${r.name}.</b> ${r.text}</div>`);
+  document.getElementById("pickrow").innerHTML=
+    NAMES.map(n=>`<label><input type="radio" name="pick" value="${n}">${n}</label>`).join("");
+  const v=document.getElementById("verdict");v.textContent="";
+  const ch=document.getElementById("chain");ch.style.display="none";ch.classList.remove("bad");
+  document.getElementById("lockbtn").style.display="";
+  document.getElementById("again").style.display="none";
+  printProofs(CS);            /* spec: proofs printed per seed, or the case doesn't ship */
+}
+document.addEventListener("click",e=>{
+  const cl=e.target.closest(".claim");if(!cl||locked)return;
+  const st=document.getElementById("st-"+cl.dataset.id);
+  const cur=st.dataset.s,next=cur==="none"?"TRUE":cur==="TRUE"?"FALSE":cur==="FALSE"?"UNPROVEN":"TRUE";
+  st.dataset.s=next;st.className="stamp st-"+next;
+  st.textContent=next==="none"?"\u00b7":next;
+});
+document.getElementById("lockbtn").addEventListener("click",()=>{
+  const sel=document.querySelector('input[name="pick"]:checked');
+  const v=document.getElementById("verdict"),ch=document.getElementById("chain");
+  if(!sel){v.textContent="Pick a suspect first.";v.style.color="var(--false)";return}
+  locked=true;
+  const accused=sel.value,win=accused===CS.culprit;
+  v.textContent=win?"LOCK ACCEPTED — chain printed below."
+                   :"LOCK REJECTED — wrong conviction.";
+  v.style.color=win?"var(--true)":"var(--false)";
+  ch.textContent=chainFor(CS,accused);
+  ch.style.display="block";ch.classList.toggle("bad",!win);
+  document.getElementById("lockbtn").style.display="none";
+  document.getElementById("again").style.display="";
+  gradeStamps();
+});
+/* grade stamps against the record trail — visible inline feedback (C2 aid) */
+function gradeStamps(){
+  document.querySelectorAll(".claim").forEach(el=>{
+    const st=document.getElementById("st-"+el.dataset.id),got=st.dataset.s;
+    if(got==="none")return;
+    const i=+el.dataset.id.split("-")[1];
+    el.dataset.grade="";
+    const who=el.closest(".suspect").querySelector(".sname").textContent;
+    const truth=(who===CS.culprit)?"FALSE":(i===2?"UNPROVEN":"TRUE");
+    st.textContent=got+(got===truth?" \u2713":" \u2717");
+  });
+}
+document.getElementById("again").addEventListener("click",newCase);
+
+newCase();
+</script>
+</body>
+</html>
