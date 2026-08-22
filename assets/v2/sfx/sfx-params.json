@@ -1,0 +1,52 @@
+{
+  "stamp-thunk-1": {
+    "file": "stamp-thunk-1.wav",
+    "kind": "stamp",
+    "variant": 1,
+    "dur": 0.32
+  },
+  "stamp-thunk-2": {
+    "file": "stamp-thunk-2.wav",
+    "kind": "stamp",
+    "variant": 2,
+    "dur": 0.32
+  },
+  "stamp-thunk-3": {
+    "file": "stamp-thunk-3.wav",
+    "kind": "stamp",
+    "variant": 3,
+    "dur": 0.32
+  },
+  "string-twang": {
+    "file": "string-twang.wav",
+    "kind": "sting",
+    "f": 98.0,
+    "dur": 1.3999546485260772
+  },
+  "lamp-flicker-buzz": {
+    "file": "lamp-flicker-buzz.wav",
+    "kind": "buzz",
+    "f": 118.0,
+    "dur": 0.8499773242630385
+  },
+  "bass-drop": {
+    "file": "bass-drop.wav",
+    "kind": "drop",
+    "dur": 1.2499773242630385
+  },
+  "gavel-slam": {
+    "file": "gavel-slam.wav",
+    "kind": "gavel",
+    "dur": 0.3
+  },
+  "typewriter-clatter": {
+    "file": "typewriter-clatter.wav",
+    "kind": "clatter",
+    "dur": 0.7499773242630385
+  },
+  "release-stamp": {
+    "file": "release-stamp.wav",
+    "kind": "stamp-light",
+    "dur": 0.22
+  }
+}
