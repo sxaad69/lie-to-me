@@ -3,7 +3,7 @@
 from tools/assets.v2.json into src/v2.template.html -> root index.html."""
 import json, os
 
-ROOT = "/root/lie-to-me"
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # repo root (self-relative; was hardcoded /root/lie-to-me)
 tpl = open(os.path.join(ROOT, "src/v2.template.html"), encoding="utf-8").read()
 manifest = open(os.path.join(ROOT, "tools/assets.v2.json"), encoding="utf-8").read()
 json.loads(manifest)  # sanity: must be valid JSON

@@ -452,6 +452,14 @@ const LTM_SFX=(()=> {
   const buffers={},musicBuf={rain:null,bass:null,drums:null};
   let rainSrc=null,bassSrc=null,drumSrc=null,rainGain=null,bassGain=null,drumGain=null;
   let state={falseStamps:0},dead=false;
+  /* D2/t_cb5ef079 fix: every started loop source goes into loopReg; stopAllLoops()
+     kills them ALL (on cutAll/newCase) so stems can never leak across cases. */
+  const loopReg=new Set();
+  function track(src){loopReg.add(src);src.onended=()=>{loopReg.delete(src)};return src}
+  function stopAllLoops(){
+    for(const s of[...loopReg])if(s)try{s.stop()}catch(e){}
+    loopReg.clear();rainSrc=bassSrc=drumSrc=null;
+  }
 
   async function init(){
     if(ctx)return;
@@ -472,7 +480,7 @@ const LTM_SFX=(()=> {
     // ambience bed: rain loop, -18 LUFS-ish bed level, gentle fade-in
     if(musicBuf.rain){
       rainGain=ctx.createGain();rainGain.gain.value=0;
-      rainSrc=ctx.createBufferSource();rainSrc.buffer=musicBuf.rain;rainSrc.loop=true;
+      rainSrc=track(ctx.createBufferSource());rainSrc.buffer=musicBuf.rain;rainSrc.loop=true;
       rainSrc.connect(rainGain).connect(master);rainSrc.start();
       rainGain.gain.setTargetAtTime(Math.pow(10,-18/20),ctx.currentTime+.05,0.6);
     }
@@ -501,11 +509,11 @@ const LTM_SFX=(()=> {
   const STEPS=[110.0,98.0,87.31,73.42];   // A2 G2 F2 D2 descent (spec §2.2)
   function setMusicState(s){state={...state,...s};_updateMusic()}
   function _updateMusic(){
-    if(!ctx||state.falseStamps<1)return;
+    if(!ctx||dead||state.falseStamps<1)return;   /* D2: no new stems spawn during cutAll silence */
     const fs=Math.min(state.falseStamps,3);
     const rate=STEPS[Math.min(fs,STEPS.length)-1]/110.0;
     if(!bassSrc&&musicBuf.bass){
-      bassSrc=ctx.createBufferSource();bassSrc.buffer=musicBuf.bass;bassSrc.loop=true;
+      bassSrc=track(ctx.createBufferSource());bassSrc.buffer=musicBuf.bass;bassSrc.loop=true;
       bassSrc.playbackRate.value=rate;
       bassGain=ctx.createGain();
       bassSrc.connect(bassGain).connect(master);bassSrc.start();
@@ -515,28 +523,28 @@ const LTM_SFX=(()=> {
     if(bassGain)bassGain.gain.setTargetAtTime(
       Math.pow(10,(-20+6*(fs-1))/20),ctx.currentTime,.3);
     if(fs>=2&&!drumSrc&&musicBuf.drums){
-      drumSrc=ctx.createBufferSource();drumSrc.buffer=musicBuf.drums;drumSrc.loop=true;
+      drumSrc=track(ctx.createBufferSource());drumSrc.buffer=musicBuf.drums;drumSrc.loop=true;
       drumGain=ctx.createGain();drumGain.gain.value=Math.pow(10,-10/20);
       drumSrc.connect(drumGain).connect(master);drumSrc.start();
     }
   }
   function cutAll(){ // wrong conviction: instant full silence (spec §2.3)
     dead=true;
-    for(const s of [rainSrc,bassSrc,drumSrc])if(s)try{s.stop()}catch(e){}
-    rainSrc=bassSrc=drumSrc=null;
+    stopAllLoops();   /* D2: kill EVERY tracked loop — leaked prior-case stems were surviving here */
     setTimeout(()=>{dead=false;_rebuildBed()},900); // 0.9s total silence, then bed returns
   }
   async function _rebuildBed(){
     if(!ctx)return;
-    state.falseStamps=0;bassSrc=null;drumSrc=null;
+    stopAllLoops();   /* D2: rebuild from zero live loops — never assume the handles are clean */
+    state.falseStamps=0;
     if(musicBuf.rain){
       rainGain=ctx.createGain();rainGain.gain.value=0;
-      rainSrc=ctx.createBufferSource();rainSrc.buffer=musicBuf.rain;rainSrc.loop=true;
+      rainSrc=track(ctx.createBufferSource());rainSrc.buffer=musicBuf.rain;rainSrc.loop=true;
       rainSrc.connect(rainGain).connect(master);rainSrc.start();
       rainGain.gain.setTargetAtTime(Math.pow(10,-18/20),ctx.currentTime+.05,0.6);
     }
   }
-  return {init,play,setMusicState,cutAll,
+  return {init,play,setMusicState,cutAll,stopAllLoops,resetForNewCase:_rebuildBed,
           get ready(){return !!ctx},get context(){return ctx}};
 })();
 
@@ -575,6 +583,7 @@ function chainFor(cs,accused){
 let CS=null,locked=false,audioArmed=false,caseNum=1,seedBase=null;
 
 function newCase(){
+  LTM_SFX.resetForNewCase();  /* D2: prior case's rain/bass/drums never leak into this one */
   const seed=((Date.now()%100000)+caseNum*7919)|0;
   CS=generateCase(seed,caseNum);locked=false;
   seedBase=seed;
