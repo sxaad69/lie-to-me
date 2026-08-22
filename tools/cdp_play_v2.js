@@ -67,8 +67,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   }
   async function clickEl(selector, idx = 0) {
     const r = await send("Runtime.evaluate", { returnByValue: true, expression: `(() => {
-      const els = document.querySelectorAll("${selector}"); const el = els[${idx}];
-      if (!el) return null; const q = el.getBoundingClientRect();
+      const els = document.querySelectorAll(${JSON.stringify(selector)}); const el = els[${idx}];
+      if (!el) return null; el.scrollIntoView({block:"center"});
+      const q = el.getBoundingClientRect();
       return JSON.stringify({ x: q.x + q.width / 2, y: q.y + q.height / 2 }); })()` });
     if (!r.result || !r.result.value) throw new Error("no element for " + selector);
     const { x, y } = JSON.parse(r.result.value);
@@ -95,29 +96,54 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
   /* 4. wrong lock first (pick an innocent): silence + thud reveal + re-arm */
   const culprit = await evalJson(`JSON.stringify(CS.culprit)`);
-  const innocent = NAMES_ORDER()[0] === culprit ? "Vega" : NAMES_ORDER()[0];
-  function NAMES_ORDER() { return ["Marlowe", "Vega", "Ash"]; }
-  await clickEl(`input[name="pick"][value="${innocent}"]`);
+  const order = ["Marlowe", "Vega", "Ash"];
+  const innocent = order[0] === culprit ? "Vega" : order[0];
+  async function ensurePicked(name) {
+    await clickEl(`#pickrow input[value="${name}"]`);
+    let got = await evalJson(`JSON.stringify((document.querySelector('input[name="pick"]:checked')||{}).value||null)`);
+    if (got !== name) {   // real click missed -> honest fallback
+      console.log(`NOTE: native radio click for ${name} did not land; using programmatic check`);
+      await send("Runtime.evaluate", { expression: `document.querySelector('input[name="pick"][value="${name}"]').checked=true` });
+      got = await evalJson(`JSON.stringify((document.querySelector('input[name="pick"]:checked')||{}).value||null)`);
+    }
+    if (got !== name) throw new Error("radio unpickable: " + name);
+    console.log("PICKED:", name);
+  }
+  await ensurePicked(innocent);
+  /* click lock: try real input events, verify effect, fall back to el.click() */
   await clickEl("#lockbtn");
-  await sleep(1200);
-  await shot("ltm-wronglock-silence");
-  for (let i = 0; i < 12; i++) { await sleep(500);
-    const armed = await evalJson(`document.getElementById("lockbtn").style.display !== "none" && document.getElementById("verdict").textContent.length > 10`);
-    if (armed) break; }
+  await sleep(600);
+  let vw = await evalJson(`JSON.stringify(document.getElementById("verdict").textContent)`);
+  if (!vw) {
+    console.log("NOTE: real click on #lockbtn had no effect; using synthetic .click()");
+    await send("Runtime.evaluate", { expression: `document.getElementById("lockbtn").click()` });
+    await sleep(600);
+    vw = await evalJson(`JSON.stringify(document.getElementById("verdict").textContent)`);
+  }
+  console.log("VERDICT after wrong lock:", vw);
+  await sleep(3400);   /* finish silence + thuds + typed tail */
   await shot("ltm-wronglock-reveal");
   console.log("WRONGLOCK:", await evalJson(`JSON.stringify({
     bad: document.getElementById("chain").classList.contains("bad"),
     rearmed: document.getElementById("lockbtn").textContent,
-    locked: locked })`));
-  /* un-stamp the FALSE-looking grades? not needed: stamps persist, lock re-arms */
+    locked: locked,
+    revealed: document.querySelectorAll(".rec.reveal").length })`));
 
   /* 5. now pick the culprit and lock -> snap chain */
-  await clickEl(`#pickrow input[value="${culprit}"]`, 0);
-  const selOk = await evalJson(`(document.querySelector('input[name="pick"]:checked')||{}).value`);
-  if (selOk !== culprit) { // radio click may have missed; set programmatically as fallback
-    await send("Runtime.evaluate", { expression: `document.querySelector('input[name="pick"][value="${culprit}"]').checked=true` });
+  await ensurePicked(culprit);
+  let vw2 = null;
+  {
+    await clickEl("#lockbtn");
+    await sleep(600);
+    vw2 = await evalJson(`JSON.stringify(document.getElementById("verdict").textContent)`);
+    if (!vw2 || !/LOCK/.test(vw2)) {
+      console.log("NOTE: real click on #lockbtn (correct path) had no effect; using synthetic .click()");
+      await send("Runtime.evaluate", { expression: `document.getElementById("lockbtn").click()` });
+      await sleep(600);
+      vw2 = await evalJson(`JSON.stringify(document.getElementById("verdict").textContent)`);
+    }
   }
-  await clickEl("#lockbtn");
+  console.log("VERDICT after correct lock:", vw2);
   await sleep(1600); await shot("ltm-hitstop-lamp");
   let done = false;
   for (let i = 0; i < 30; i++) { await sleep(400);
@@ -133,7 +159,10 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   /* 6. next case boots */
   await clickEl("#nextcase");
   await sleep(700);
-  console.log("CASE2:", await evalJson(`document.getElementById("caselbl").textContent + " | claims=" + document.querySelectorAll(".claim").length`));
+  let case2 = null;
+  try { case2 = await evalJson(`JSON.stringify(document.getElementById("caselbl").textContent + " | claims=" + document.querySelectorAll(".claim").length)`); }
+  catch (e) { case2 = "eval-fail: " + e.message; }
+  console.log("CASE2:", case2);
   await shot("ltm-case2-boot");
 
   console.log("CONSOLE_ERRORS:", errors.length, errors.slice(0, 3));

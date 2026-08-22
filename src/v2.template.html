@@ -50,7 +50,9 @@
        background-color:#d9d2bd;background-size:cover;background-position:center;
        color:#26221a;box-shadow:0 4px 12px rgba(0,0,0,.5);
        border:1px solid #b7ae93;font-size:14.5px;line-height:1.4}
-  .rec.logstrip{background-color:#101216;color:#cfcabb;border-color:#2a2e38}
+  .rec.logstrip{color:#cfcabb;border-color:#2a2e38;
+       background-image:linear-gradient(rgba(10,12,16,.86),rgba(10,12,16,.86)),var(--strip)!important;
+       background-size:cover;background-position:center}
   .rec b{font-size:14px;letter-spacing:.03em}
   .rec.polaroid::before{content:"";position:absolute;right:-6px;top:-8px;width:74px;height:74px;
        background:var(--dress-polaroid) center/contain no-repeat;pointer-events:none}
@@ -610,11 +612,14 @@ function renderRecords(){
   const rEl=document.getElementById("records");rEl.innerHTML="";
   CS.records.forEach((r,i)=>{
     const isCam=r.id===CS.cameraRecord;
-    const cls="rec"+(r.id==="R2"||r.id==="R4"&&CS.tpl>=2&&CS.tpl<=4?" logstrip":"")
-              +(isCam?" polaroid":"");
+    const strip=(r.id==="R2"||r.id==="R5");
+    const cls="rec"+(strip?" logstrip":"")+(isCam?" polaroid":"");
+    let style="";
+    if(!isCam&&!strip)style=`background-image:url('${ASSETS.dressing["ledger-page"]}')`;
+    if(strip)style=`--strip:url('${ASSETS.dressing["elevator-log-strip"]}')`;
+    if(isCam)style+=`;--dress-polaroid:url('${ASSETS.dressing["polaroid-frame"]}')`;
     rEl.insertAdjacentHTML("beforeend",
-      `<div class="${cls}" id="rec-${r.id}"
-            style="${!isCam&&!cls.includes("logstrip")?'background-image:url(\''+ASSETS.dressing["ledger-page"]+'\')':''}${isCam?';--dress-polaroid:url(\''+ASSETS.dressing["polaroid-frame"]+'\')':''}${cls.includes("logstrip")?';background-image:url(\''+ASSETS.dressing["elevator-log-strip"]+'\')':''}">
+      `<div class="${cls}" id="rec-${r.id}" style="${style}">
         <span class="tag">${r.id}</span><b>${r.name}.</b> ${r.text}</div>`);
   });
 }
