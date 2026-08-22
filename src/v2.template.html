@@ -153,9 +153,12 @@ const fmt=m=>"22:"+String(m).padStart(2,"0");
    Red herrings NEVER enter the exclusion math (they implicate,
    never exclude), so no-innocent-convictable is structural.
    ================================================================ */
-function generateCase(seed){
+function generateCase(seed,caseNum=1){
   const rnd=mulberry32(seed);
-  const tier=pick(rnd,[[1,2,3,4],[5,6,7,8],[9,10,11,12]]);   // case difficulty ladder
+  /* difficulty ladder (design §4.5): case 1 = tutorial pool T1-4,
+     case 2 = +partial-truth T5-8, case 3 = +lying innocent +red herring T9-12 */
+  const TIERS=[[1,2,3,4],[5,6,7,8],[9,10,11,12]];
+  const tier=TIERS[Math.min(Math.max(caseNum|0||1,1),3)-1];
   const tpl=pick(rnd,tier);
   const culprit=pick(rnd,NAMES);
   const inn=[...shuffle(rnd,NAMES.filter(n=>n!==culprit))];   // [alibiHolder, seen/other]
@@ -561,7 +564,7 @@ let CS=null,locked=false,audioArmed=false,caseNum=1,seedBase=null;
 
 function newCase(){
   const seed=((Date.now()%100000)+caseNum*7919)|0;
-  CS=generateCase(seed);locked=false;
+  CS=generateCase(seed,caseNum);locked=false;
   seedBase=seed;
   document.getElementById("seedlbl").textContent="#"+seed;
   document.getElementById("caselbl").textContent=

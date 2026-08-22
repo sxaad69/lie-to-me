@@ -17,26 +17,29 @@ let failures = 0;
 const tplSeen = new Set();
 const N = 2000;
 for (let seed = 1; seed <= N; seed++) {
-  const cs = generateCase(seed);
+  for (const caseNum of [1, 2, 3]) {
+  const cs = generateCase(seed, caseNum);
   tplSeen.add(cs.tpl);
   const p = proveCase(cs);
-  if (!p.uniqueCulprit.holds) { failures++; console.log(`seed ${seed} T${cs.tpl}: unique-culprit FAIL ${p.uniqueCulprit.detail}`); }
-  if (!p.noInnocentConvicts.holds) { failures++; console.log(`seed ${seed} T${cs.tpl}: no-innocent-convicts FAIL ${p.noInnocentConvicts.violations}`); }
-  // claim truth coherence: culprit's three texture claims are FALSE; nobody else's alibi is FALSE unless they're the liar
+  if (!p.uniqueCulprit.holds) { failures++; console.log(`seed ${seed} case${caseNum} T${cs.tpl}: unique-culprit FAIL ${p.uniqueCulprit.detail}`); }
+  if (!p.noInnocentConvicts.holds) { failures++; console.log(`seed ${seed} case${caseNum} T${cs.tpl}: no-innocent-convicts FAIL ${p.noInnocentConvicts.violations}`); }
+  // claim truth coherence
   for (const c of cs.claims) {
     if (!["TRUE","FALSE","UNPROVEN"].includes(c.truth)) { failures++; console.log(`seed ${seed}: bad truth ${c.id}`); }
   }
   const culClaims = cs.claims.filter(c => c.who === cs.culprit);
   if (culClaims.some(c => c.truth !== "FALSE")) { failures++; console.log(`seed ${seed}: culprit has non-FALSE claim`); }
-  // every claim id unique
   const ids = new Set(cs.claims.map(c => c.id));
   if (ids.size !== cs.claims.length) { failures++; console.log(`seed ${seed}: duplicate claim ids`); }
-  // tier ladder: case 1 must draw from T1-T4 pool only
-  // (tier membership checked implicitly by template number)
+  // ladder discipline: case number must draw from its own pool
+  const lo = [1,5,9][caseNum-1], hi = [4,8,12][caseNum-1];
+  if (cs.tpl < lo || cs.tpl > hi) { failures++; console.log(`seed ${seed} case${caseNum}: template ${cs.tpl} outside pool ${lo}-${hi}`); }
+  }
 }
 // red-herring structure: templates 9-12 carry exactly one herring, never in excl
 for (let seed = 1; seed <= N; seed++) {
-  const cs = generateCase(seed);
+  for (const caseNum of [2,3]) {
+  const cs = generateCase(seed, caseNum);
   if (cs.tpl >= 9) {
     if (!cs.herring) { failures++; console.log(`seed ${seed} T${cs.tpl}: missing herring`); continue; }
     if (cs.excl[cs.herring.implicates].includes(cs.herring.record)) {
@@ -46,16 +49,20 @@ for (let seed = 1; seed <= N; seed++) {
   } else if (cs.records.length !== 4) {
     failures++; console.log(`seed ${seed} T${cs.tpl}: expected 4 records`);
   }
+  if (cs.partial && cs.partial === cs.culprit) { failures++; console.log(`seed ${seed} T${cs.tpl}: partial-truth assigned to culprit`); }
+  if (cs.liar && (cs.liar === cs.culprit || !cs.excl[cs.liar].length)) { failures++; console.log(`seed ${seed} T${cs.tpl}: liar invalid (${cs.liar})`); }
+  }
 }
-console.log(`sweep: ${N} seeds, failures=${failures}`);
+console.log(`sweep: ${N} seeds x 3 cases, failures=${failures}`);
 console.log(`template coverage: ${tplSeen.size}/12 -> {${[...tplSeen].sort((a,b)=>a-b).join(",")}}`);
 if (tplSeen.size !== 12) { console.log("TEMPLATE COVERAGE INCOMPLETE"); process.exit(2); }
 // per-template proof spot-checks with console proofs (the spec artifact)
 let shown = 0;
-for (let t = 1; t <= 12 && shown < 3; t++) {
+for (let t = 1; t <= 12; t++) {
   for (let seed = 1; seed <= 5000; seed++) {
-    const cs = generateCase(seed);
-    if (cs.tpl === t && shown < 3) {
+    const caseNum = Math.ceil(t / 4);
+    const cs = generateCase(seed, caseNum);
+    if (cs.tpl === t && shown < 6) {
       const p = proveCase(cs);
       console.log(`T${t} seed=${seed}: unique=${p.uniqueCulprit.holds} worlds={${p.uniqueCulprit.worlds}} noInnocentConvicts=${p.noInnocentConvicts.holds} records=[${cs.records.map(r=>r.id).join(",")}]`);
       shown++;
